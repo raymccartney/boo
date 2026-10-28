@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #projector-view {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            transform: scaleX(-1); /* mirror */
+        }
+
+        #boo-character {
+            font-size: 25vw; 
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="projector-view">
+        <div id="boo-character"><img src="boo_chase.gif" width="100%"></div>
+    </div>
+
+    <script>
+        const MY_WEBHOOK_ID = '59acdcc5-9463-418c-9458-30faa6ca2982'; 
+        const boo = document.getElementById('boo-character');
+        let lastRequestCount = 0;
+        let freezeTimeout;
+
+        async function getBaseline() {
+            try {
+                let response = await fetch(`https://webhook.site/59acdcc5-9463-418c-9458-30faa6ca2982/requests?size=1`);
+                let data = await response.json();
+                lastRequestCount = data.total || 0;
+                console.log("Baseline set. Waiting for events...");
+            } catch (e) {
+                console.error("Could not set baseline, retrying...", e);
+            }
+        }
+
+        async function checkRingMotion() {
+            try {
+                let response = await fetch(`https://webhook.site/59acdcc5-9463-418c-9458-30faa6ca2982/requests?size=1`);
+                let data = await response.json();
+                
+                if (data.total > lastRequestCount) {
+                    lastRequestCount = data.total;
+                    console.log("Motion! Boo is freezing.");
+                    // hide
+                    boo.innerHTML = '<img src="boo_hide.gif" width="100%">';
+                    boo.style.transform = 'translate(-50%, -50%) scale(1)';
+                    clearTimeout(freezeTimeout);
+                    // chase
+                    freezeTimeout = setTimeout(() => {
+                        console.log("Stillness. Boo is advancing.");
+                        boo.innerHTML = '<img src="boo_chase.gif" width="100%">';
+                        boo.style.transform = 'translate(-50%, -50%) scale(1.4)';
+                    }, 15000); 
+                }
+            } catch (error) {
+                console.log("Checking Webhook dashboard...", error);
+            }
+        }
+        getBaseline().then(() => {
+            setInterval(checkRingMotion, 1500);
+        });
+    </script>
+</body>
+</html>
