@@ -19,18 +19,18 @@
             width: 100vw;
             height: 100vh;
             position: relative;
-            transform: scaleX(-1); /* mirror */
+            transform: scaleX(-1); 
         }
 
-        #boo-character {
-            width: 15vw; 
-            height: 15vh;
+        .boo-character {
+            width: 15vw;  
+            height: 15vh; 
             position: absolute !important;
             transform: translate(-50%, -50%);
-            transition: top 2.5s ease-in-out, left 2.5s ease-in-out; 
+            transition: top 2.5s ease-in-out, left 2.5s ease-in-out;
         }
 
-        #boo-image {
+        .boo-image {
             width: 100%;
             height: 100%;
             object-fit: contain;
@@ -40,21 +40,21 @@
 <body>
 
     <div id="projector-view">
-        <div id="boo1" class="boo-character" style="top: 30%; left: 25%;">
-            <img id="img-boo1" class="boo-image" src="boo-chase-1.png" alt="Boo">
+        <div id="boo1" class="boo-character" style="top: 25%; left: 25%;">
+            <img id="img-boo1" class="boo-image" src="boo-chase-1.png" alt="Boo 1">
         </div>
         <div id="boo2" class="boo-character" style="top: 50%; left: 50%;">
-            <img id="img-boo2" class="boo-image" src="boo-chase-1.png" alt="Boo">
+            <img id="img-boo2" class="boo-image" src="boo-chase-1.png" alt="Boo 2">
         </div>
-        <div id="boo3" class="boo-character" style="top: 70%; left: 75%;">
-            <img id="img-boo3" class="boo-image" src="boo-chase-1.png" alt="Boo">
+        <div id="boo3" class="boo-character" style="top: 75%; left: 75%;">
+            <img id="img-boo3" class="boo-image" src="boo-chase-1.png" alt="Boo 3">
         </div>
     </div>
 
     <script>
         const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
         const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
-        
+
         class BooGhost {
             constructor(containerId, imageId) {
                 this.container = document.getElementById(containerId);
@@ -66,7 +66,7 @@
 
             init() {
                 setInterval(() => this.animateFrames(), 250);
-                setInterval(() => this.floatAround(), 2800);
+                setInterval(() => this.floatAround(), 3000);
                 this.updateBehavior();
             }
 
@@ -85,28 +85,28 @@
                     const randomTop = Math.floor(Math.random() * 60) + 20;
                     const randomLeft = Math.floor(Math.random() * 60) + 20;
                     
-                    this.container.style.top = `${randomTop}%`;
-                    this.container.style.left = `${randomLeft}%`;
+                    this.container.style.top = randomTop + '%';
+                    this.container.style.left = randomLeft + '%';
                 }
             }
 
             updateBehavior() {
-                if (Math.random() > 0.5) {
-                    this.currentMode = 'CHASE';
-                } else {
-                    this.currentMode = 'HIDE';
-                }
+                this.currentMode = Math.random() > 0.5 ? 'CHASE' : 'HIDE';
+                this.frameIndex = 0;
 
-                const nextStateChange = Math.floor(Math.random() * 4000) + 4000;
-                setTimeout(() => this.updateBehavior(), nextStateChange);
+                this.img.src = this.currentMode === 'CHASE' ? chaseFrames[0] : hideFrames[0];
+
+                const nextChange = Math.floor(Math.random() * 4000) + 4000;
+                setTimeout(() => this.updateBehavior(), nextChange);
             }
         }
 
-        window.onload = () => {
-            const ghost1 = new BooGhost('boo1', 'img-boo1');
-            const ghost2 = new BooGhost('boo2', 'img-boo2');
-            const ghost3 = new BooGhost('boo3', 'img-boo3');
-        };
+        document.addEventListener("DOMContentLoaded", () => {
+            new BooGhost('boo1', 'img-boo1');
+            new BooGhost('boo2', 'img-boo2');
+            new BooGhost('boo3', 'img-boo3');
+            console.log("All 3 Boo systems operating normally.");
+        });
     </script>
 </body>
 </html>
