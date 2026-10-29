@@ -12,6 +12,7 @@
             color: #fff;
             overflow: hidden;
             height: 100vh;
+            width: 100vw;
         }
 
         #projector-view {
@@ -23,14 +24,16 @@
 
         #boo-character {
             width: 15vw; 
-            position: absolute;
+            height: 15vh;
+            position: absolute !important;
             transform: translate(-50%, -50%);
             transition: top 2.5s ease-in-out, left 2.5s ease-in-out; 
         }
 
         #boo-image {
             width: 100%;
-            height: auto;
+            height: 100%;
+            object-fit: contain;
         }
     </style>
 </head>
