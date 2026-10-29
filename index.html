@@ -13,12 +13,14 @@
             overflow: hidden;
             height: 100vh;
             width: 100vw;
+            cursor: pointer;
         }
 
         #projector-view {
             width: 100vw;
             height: 100vh;
             position: relative;
+            /* Flipped once globally to handle rear-window projection */
             transform: scaleX(-1); 
         }
 
@@ -27,26 +29,46 @@
             height: 15vh; 
             position: absolute !important;
             transform: translate(-50%, -50%);
-            transition: top 2.5s ease-in-out, left 2.5s ease-in-out;
+            /* Smooth linear velocity tracking across the screen */
+            transition: top 3.5s ease-in-out, left 3.5s linear;
         }
 
         .boo-image {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        #tap-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            font-family: sans-serif;
+            font-size: 1.5rem;
+            color: #e65c00;
+            font-weight: bold;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
+    <div id="tap-overlay">🎃 Tap screen to activate Boo Microphone 🎃</div>
+
     <div id="projector-view">
-        <div id="boo1" class="boo-character" style="top: 25%; left: 25%;">
+        <!-- Initial configuration ensures all ghosts start safely past the 50% threshold for their first run -->
+        <div id="boo1" class="boo-character" style="top: 20%; left: 65%;">
             <img id="img-boo1" class="boo-image" src="boo-chase-1.png" alt="Boo 1">
         </div>
-        <div id="boo2" class="boo-character" style="top: 50%; left: 50%;">
+        <div id="boo2" class="boo-character" style="top: 45%; left: 80%;">
             <img id="img-boo2" class="boo-image" src="boo-chase-1.png" alt="Boo 2">
         </div>
-        <div id="boo3" class="boo-character" style="top: 75%; left: 75%;">
+        <div id="boo3" class="boo-character" style="top: 75%; left: 70%;">
             <img id="img-boo3" class="boo-image" src="boo-chase-1.png" alt="Boo 3">
         </div>
     </div>
@@ -56,9 +78,10 @@
         const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
 
         class BooGhost {
-            constructor(containerId, imageId) {
+            constructor(containerId, imageId, verticalOffset) {
                 this.container = document.getElementById(containerId);
                 this.img = document.getElementById(imageId);
+                this.verticalOffset = verticalOffset; 
                 this.currentMode = 'CHASE';
                 this.frameIndex = 0;
                 this.init();
@@ -66,8 +89,6 @@
 
             init() {
                 setInterval(() => this.animateFrames(), 250);
-                setInterval(() => this.floatAround(), 3000);
-                this.updateBehavior();
             }
 
             animateFrames() {
@@ -80,32 +101,139 @@
                 }
             }
 
-            floatAround() {
-                if (this.currentMode === 'CHASE') {
-                    const randomTop = Math.floor(Math.random() * 60) + 20;
-                    const randomLeft = Math.floor(Math.random() * 60) + 20;
-                    
-                    this.container.style.top = randomTop + '%';
-                    this.container.style.left = randomLeft + '%';
-                }
+            getCurrentLeftPercentage() {
+                return parseFloat(this.container.style.left) || 50;
             }
 
-            updateBehavior() {
-                this.currentMode = Math.random() > 0.5 ? 'CHASE' : 'HIDE';
+            forcePosition(forcedLeft) {
+                // Instantly snaps ghost without transition animation
+                const currentTransition = this.container.style.transition;
+                this.container.style.transition = 'none';
+                this.container.style.left = forcedLeft + '%';
+                // Force layout reflow
+                this.container.offsetHeight; 
+                this.container.style.transition = currentTransition;
+            }
+
+            startFlight(targetLeft, faceLeft) {
+                this.currentMode = 'CHASE';
                 this.frameIndex = 0;
+                
+                this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
 
-                this.img.src = this.currentMode === 'CHASE' ? chaseFrames[0] : hideFrames[0];
+                const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
+                this.container.style.top = driftTop + '%';
+                this.container.style.left = targetLeft + '%'; 
+            }
 
-                const nextChange = Math.floor(Math.random() * 4000) + 4000;
-                setTimeout(() => this.updateBehavior(), nextChange);
+            switchToHideMode() {
+                this.currentMode = 'HIDE';
+                this.frameIndex = 0;
             }
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            new BooGhost('boo1', 'img-boo1');
-            new BooGhost('boo2', 'img-boo2');
-            new BooGhost('boo3', 'img-boo3');
-            console.log("All 3 Boo systems operating normally.");
+            const ghosts = [
+                new BooGhost('boo1', 'img-boo1', 20),
+                new BooGhost('boo2', 'img-boo2', 45),
+                new BooGhost('boo3', 'img-boo3', 75)
+            ];
+
+            let globalHideTimeout;
+            const speedPerPercent = 3500 / 100; 
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-GB';
+
+                recognition.onresult = (event) => {
+                    const resultIndex = event.resultIndex;
+                    const transcript = event.results[resultIndex].transcript.toLowerCase();
+                    console.log("Heard phrase:", transcript);
+
+                    // ----------------------------------------------------
+                    // COMMAND A: MOVE TO GARDEN (FAR LEFT - 10%)
+                    // ----------------------------------------------------
+                    if (transcript.includes('boo garden') || transcript.includes('garden')) {
+                        clearTimeout(globalHideTimeout);
+
+                        // Enforce the 50% distance guardrail boundary
+                        // Moving to 10% means ghosts must start at or right of 60%
+                        ghosts.forEach(ghost => {
+                            if (ghost.getCurrentLeftPercentage() < 60) {
+                                // Snap too-close ghosts over to random spots past the safe line
+                                const safeRandomStart = Math.floor(Math.random() * 25) + 65; // 65% to 90%
+                                ghost.forcePosition(safeRandomStart);
+                            }
+                        });
+
+                        let shortestTravelTime = Infinity;
+                        ghosts.forEach(ghost => {
+                            const currentPos = ghost.getCurrentLeftPercentage();
+                            const distanceToCover = Math.abs(currentPos - 10);
+                            const travelTime = distanceToCover * speedPerPercent;
+
+                            if (travelTime < shortestTravelTime) {
+                                shortestTravelTime = travelTime;
+                            }
+                        });
+
+                        ghosts.forEach(ghost => ghost.startFlight(10, true));
+
+                        globalHideTimeout = setTimeout(() => {
+                            ghosts.forEach(ghost => ghost.switchToHideMode());
+                        }, shortestTravelTime);
+                    }
+
+                    // ----------------------------------------------------
+                    // COMMAND B: MOVE TO DOOR (FAR RIGHT - 90%)
+                    // ----------------------------------------------------
+                    if (transcript.includes('boo door') || transcript.includes('door')) {
+                        clearTimeout(globalHideTimeout);
+
+                        // Enforce the 50% distance guardrail boundary
+                        // Moving to 90% means ghosts must start at or left of 40%
+                        ghosts.forEach(ghost => {
+                            if (ghost.getCurrentLeftPercentage() > 40) {
+                                // Snap too-close ghosts over to random spots behind the safe line
+                                const safeRandomStart = Math.floor(Math.random() * 25) + 10; // 10% to 35%
+                                ghost.forcePosition(safeRandomStart);
+                            }
+                        });
+
+                        let shortestTravelTime = Infinity;
+                        ghosts.forEach(ghost => {
+                            const currentPos = ghost.getCurrentLeftPercentage();
+                            const distanceToCover = Math.abs(90 - currentPos);
+                            const travelTime = distanceToCover * speedPerPercent;
+
+                            if (travelTime < shortestTravelTime) {
+                                shortestTravelTime = travelTime;
+                            }
+                        });
+
+                        ghosts.forEach(ghost => ghost.startFlight(90, false));
+
+                        globalHideTimeout = setTimeout(() => {
+                            ghosts.forEach(ghost => ghost.switchToHideMode());
+                        }, shortestTravelTime);
+                    }
+                };
+
+                recognition.onend = () => { recognition.start(); };
+
+                document.getElementById('tap-overlay').addEventListener('click', (e) => {
+                    recognition.start();
+                    document.getElementById('tap-overlay').style.display = 'none';
+                    e.stopPropagation();
+                });
+            } else {
+                alert("Speech recognition is not supported on this browser engine. Please switch to Google Chrome!");
+            }
         });
     </script>
 </body>
