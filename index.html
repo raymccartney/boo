@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Testing Animation: Random Boo Ghost</title>
+    <title>Boo</title>
     <style>
         body {
             margin: 0;
@@ -11,9 +11,6 @@
             background-color: #000;
             color: #fff;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             height: 100vh;
         }
 
@@ -21,17 +18,14 @@
             width: 100vw;
             height: 100vh;
             position: relative;
-            transform: scaleX(-1); /* Keeps mirroring active for window testing */
+            transform: scaleX(-1); /* mirror */
         }
 
         #boo-character {
-            width: 30vw; /* Base width */
+            width: 15vw; 
             position: absolute;
-            top: 50%;
-            left: 50%;
             transform: translate(-50%, -50%);
-            /* Smooth transitions for size lunges and moving around the screen */
-            transition: transform 0.5s ease-in-out, top 0.8s ease-in-out, left 0.8s ease-in-out;
+            transition: top 2.5s ease-in-out, left 2.5s ease-in-out; 
         }
 
         #boo-image {
@@ -43,77 +37,73 @@
 <body>
 
     <div id="projector-view">
-        <div id="boo-character">
-            <img id="boo-image" src="boo-chase-1.png" alt="Boo">
+        <div id="boo1" class="boo-character" style="top: 30%; left: 25%;">
+            <img id="img-boo1" class="boo-image" src="boo-chase-1.png" alt="Boo">
+        </div>
+        <div id="boo2" class="boo-character" style="top: 50%; left: 50%;">
+            <img id="img-boo2" class="boo-image" src="boo-chase-1.png" alt="Boo">
+        </div>
+        <div id="boo3" class="boo-character" style="top: 70%; left: 75%;">
+            <img id="img-boo3" class="boo-image" src="boo-chase-1.png" alt="Boo">
         </div>
     </div>
 
     <script>
-        const booContainer = document.getElementById('boo-character');
-        const booImg = document.getElementById('boo-image');
-        
-        let animationInterval;
-        let behaviorTimeout;
-        
         const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
         const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
         
-        let currentFrameIndex = 0;
-        let currentMode = 'CHASE';
+        class BooGhost {
+            constructor(containerId, imageId) {
+                this.container = document.getElementById(containerId);
+                this.img = document.getElementById(imageId);
+                this.currentMode = 'CHASE';
+                this.frameIndex = 0;
+                this.init();
+            }
 
-        // 1. CYCLE ANIMATION FRAMES
-        function startAnimationLoop() {
-            clearInterval(animationInterval);
-            animationInterval = setInterval(() => {
-                if (currentMode === 'CHASE') {
-                    currentFrameIndex = (currentFrameIndex + 1) % chaseFrames.length;
-                    booImg.src = chaseFrames[currentFrameIndex];
-                } else if (currentMode === 'HIDE') {
-                    currentFrameIndex = (currentFrameIndex + 1) % hideFrames.length;
-                    booImg.src = hideFrames[currentFrameIndex];
+            init() {
+                setInterval(() => this.animateFrames(), 250);
+                setInterval(() => this.floatAround(), 2800);
+                this.updateBehavior();
+            }
+
+            animateFrames() {
+                if (this.currentMode === 'CHASE') {
+                    this.frameIndex = (this.frameIndex + 1) % chaseFrames.length;
+                    this.img.src = chaseFrames[this.frameIndex];
+                } else if (this.currentMode === 'HIDE') {
+                    this.frameIndex = (this.frameIndex + 1) % hideFrames.length;
+                    this.img.src = hideFrames[this.frameIndex];
                 }
-            }, 250); 
-        }
-
-        // 2. RANDOM MOVEMENT ENGINE (Only moves while chasing)
-        function floatAround() {
-            if (currentMode === 'CHASE') {
-                // Generate a random position on screen (keeping 15% padding from borders)
-                const randomTop = Math.floor(Math.random() * 70) + 15;
-                const randomLeft = Math.floor(Math.random() * 70) + 15;
-                
-                booContainer.style.top = `${randomTop}%`;
-                booContainer.style.left = `${randomLeft}%`;
-            }
-        }
-        // Attempt a float adjustment every 1.2 seconds
-        setInterval(floatAround, 1200);
-
-        // 3. RANDOM BEHAVIOR BRAIN
-        function updateBehavior() {
-            // Flip a coin (50/50 chance) to toggle states
-            if (Math.random() > 0.5) {
-                // SWITCH TO CHASE MODE
-                currentMode = 'CHASE';
-                currentFrameIndex = 0;
-                booContainer.style.transform = 'translate(-50%, -50%) scale(1.4)'; // Lunge closer
-                console.log("Behavior: Chasing!");
-            } else {
-                // SWITCH TO HIDE MODE
-                currentMode = 'HIDE';
-                currentFrameIndex = 0;
-                booContainer.style.transform = 'translate(-50%, -50%) scale(1)'; // Shrink back
-                console.log("Behavior: Hiding!");
             }
 
-            // Generate a random duration for this state (between 3 to 7 seconds)
-            const nextChangeDelay = Math.floor(Math.random() * 4000) + 3000;
-            behaviorTimeout = setTimeout(updateBehavior, nextChangeDelay);
+            floatAround() {
+                if (this.currentMode === 'CHASE') {
+                    const randomTop = Math.floor(Math.random() * 60) + 20;
+                    const randomLeft = Math.floor(Math.random() * 60) + 20;
+                    
+                    this.container.style.top = `${randomTop}%`;
+                    this.container.style.left = `${randomLeft}%`;
+                }
+            }
+
+            updateBehavior() {
+                if (Math.random() > 0.5) {
+                    this.currentMode = 'CHASE';
+                } else {
+                    this.currentMode = 'HIDE';
+                }
+
+                const nextStateChange = Math.floor(Math.random() * 4000) + 4000;
+                setTimeout(() => this.updateBehavior(), nextStateChange);
+            }
         }
 
-        // Start everything up
-        startAnimationLoop();
-        updateBehavior();
+        window.onload = () => {
+            const ghost1 = new BooGhost('boo1', 'img-boo1');
+            const ghost2 = new BooGhost('boo2', 'img-boo2');
+            const ghost3 = new BooGhost('boo3', 'img-boo3');
+        };
     </script>
 </body>
 </html>
