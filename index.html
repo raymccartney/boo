@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boo</title>
+    <title>Testing Animation: Random Boo Ghost</title>
     <style>
         body {
             margin: 0;
@@ -21,68 +21,99 @@
             width: 100vw;
             height: 100vh;
             position: relative;
-            transform: scaleX(-1); /* mirror */
+            transform: scaleX(-1); /* Keeps mirroring active for window testing */
         }
 
         #boo-character {
-            font-size: 25vw; 
+            width: 30vw; /* Base width */
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: all 0.4s ease-in-out;
+            /* Smooth transitions for size lunges and moving around the screen */
+            transition: transform 0.5s ease-in-out, top 0.8s ease-in-out, left 0.8s ease-in-out;
+        }
+
+        #boo-image {
+            width: 100%;
+            height: auto;
         }
     </style>
 </head>
 <body>
 
     <div id="projector-view">
-        <div id="boo-character"><img src="boo_chase.gif" width="100%"></div>
+        <div id="boo-character">
+            <img id="boo-image" src="boo-chase-1.png" alt="Boo">
+        </div>
     </div>
 
     <script>
-        const MY_WEBHOOK_ID = '59acdcc5-9463-418c-9458-30faa6ca2982'; 
-        const boo = document.getElementById('boo-character');
-        let lastRequestCount = 0;
-        let freezeTimeout;
+        const booContainer = document.getElementById('boo-character');
+        const booImg = document.getElementById('boo-image');
+        
+        let animationInterval;
+        let behaviorTimeout;
+        
+        const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
+        const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
+        
+        let currentFrameIndex = 0;
+        let currentMode = 'CHASE';
 
-        async function getBaseline() {
-            try {
-                let response = await fetch(`https://webhook.site/59acdcc5-9463-418c-9458-30faa6ca2982/requests?size=1`);
-                let data = await response.json();
-                lastRequestCount = data.total || 0;
-                console.log("Baseline set. Waiting for events...");
-            } catch (e) {
-                console.error("Could not set baseline, retrying...", e);
-            }
-        }
-
-        async function checkRingMotion() {
-            try {
-                let response = await fetch(`https://webhook.site/59acdcc5-9463-418c-9458-30faa6ca2982/requests?size=1`);
-                let data = await response.json();
-                
-                if (data.total > lastRequestCount) {
-                    lastRequestCount = data.total;
-                    console.log("Motion! Boo is freezing.");
-                    // hide
-                    boo.innerHTML = '<img src="boo_hide.gif" width="100%">';
-                    boo.style.transform = 'translate(-50%, -50%) scale(1)';
-                    clearTimeout(freezeTimeout);
-                    // chase
-                    freezeTimeout = setTimeout(() => {
-                        console.log("Stillness. Boo is advancing.");
-                        boo.innerHTML = '<img src="boo_chase.gif" width="100%">';
-                        boo.style.transform = 'translate(-50%, -50%) scale(1.4)';
-                    }, 15000); 
+        // 1. CYCLE ANIMATION FRAMES
+        function startAnimationLoop() {
+            clearInterval(animationInterval);
+            animationInterval = setInterval(() => {
+                if (currentMode === 'CHASE') {
+                    currentFrameIndex = (currentFrameIndex + 1) % chaseFrames.length;
+                    booImg.src = chaseFrames[currentFrameIndex];
+                } else if (currentMode === 'HIDE') {
+                    currentFrameIndex = (currentFrameIndex + 1) % hideFrames.length;
+                    booImg.src = hideFrames[currentFrameIndex];
                 }
-            } catch (error) {
-                console.log("Checking Webhook dashboard...", error);
+            }, 250); 
+        }
+
+        // 2. RANDOM MOVEMENT ENGINE (Only moves while chasing)
+        function floatAround() {
+            if (currentMode === 'CHASE') {
+                // Generate a random position on screen (keeping 15% padding from borders)
+                const randomTop = Math.floor(Math.random() * 70) + 15;
+                const randomLeft = Math.floor(Math.random() * 70) + 15;
+                
+                booContainer.style.top = `${randomTop}%`;
+                booContainer.style.left = `${randomLeft}%`;
             }
         }
-        getBaseline().then(() => {
-            setInterval(checkRingMotion, 1500);
-        });
+        // Attempt a float adjustment every 1.2 seconds
+        setInterval(floatAround, 1200);
+
+        // 3. RANDOM BEHAVIOR BRAIN
+        function updateBehavior() {
+            // Flip a coin (50/50 chance) to toggle states
+            if (Math.random() > 0.5) {
+                // SWITCH TO CHASE MODE
+                currentMode = 'CHASE';
+                currentFrameIndex = 0;
+                booContainer.style.transform = 'translate(-50%, -50%) scale(1.4)'; // Lunge closer
+                console.log("Behavior: Chasing!");
+            } else {
+                // SWITCH TO HIDE MODE
+                currentMode = 'HIDE';
+                currentFrameIndex = 0;
+                booContainer.style.transform = 'translate(-50%, -50%) scale(1)'; // Shrink back
+                console.log("Behavior: Hiding!");
+            }
+
+            // Generate a random duration for this state (between 3 to 7 seconds)
+            const nextChangeDelay = Math.floor(Math.random() * 4000) + 3000;
+            behaviorTimeout = setTimeout(updateBehavior, nextChangeDelay);
+        }
+
+        // Start everything up
+        startAnimationLoop();
+        updateBehavior();
     </script>
 </body>
 </html>
