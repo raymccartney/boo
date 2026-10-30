@@ -61,7 +61,6 @@
     <div id="tap-overlay">🎃 Tap screen to activate Boo Microphone 🎃</div>
 
     <div id="projector-view">
-        <!-- Initial configuration ensures all ghosts start safely past the 50% threshold for their first run -->
         <div id="boo1" class="boo-character" style="top: 20%; left: 65%;">
             <img id="img-boo1" class="boo-image" src="boo-chase-1.png" alt="Boo 1">
         </div>
@@ -75,175 +74,171 @@
 
     <script>
         const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
-const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
+        const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
 
-class BooGhost {
-    constructor(containerId, imageId, verticalOffset) {
-        this.container = document.getElementById(containerId);
-        this.img = document.getElementById(imageId);
-        this.verticalOffset = verticalOffset; 
-        this.currentMode = 'CHASE';
-        this.frameIndex = 0;
-        this.init();
-    }
+        class BooGhost {
+            constructor(containerId, imageId, verticalOffset) {
+                this.container = document.getElementById(containerId);
+                this.img = document.getElementById(imageId);
+                this.verticalOffset = verticalOffset; 
+                this.currentMode = 'CHASE';
+                this.frameIndex = 0;
+                this.init();
+            }
 
-    init() {
-        setInterval(() => this.animateFrames(), 250);
-    }
+            init() {
+                setInterval(() => this.animateFrames(), 250);
+            }
 
-    animateFrames() {
-        if (this.currentMode === 'CHASE') {
-            this.frameIndex = (this.frameIndex + 1) % chaseFrames.length;
-            this.img.src = chaseFrames[this.frameIndex];
-        } else if (this.currentMode === 'HIDE') {
-            this.frameIndex = (this.frameIndex + 1) % hideFrames.length;
-            this.img.src = hideFrames[this.frameIndex];
-        }
-    }
-
-    getCurrentLeftPercentage() {
-        return parseFloat(this.container.style.left) || 50;
-    }
-
-    forcePosition(forcedLeft) {
-        const currentTransition = this.container.style.transition;
-        this.container.style.transition = 'none';
-        this.container.style.left = forcedLeft + '%';
-        this.container.offsetHeight; 
-        this.container.style.transition = currentTransition;
-    }
-
-    startFlight(targetLeft, faceLeft) {
-        this.currentMode = 'CHASE';
-        this.frameIndex = 0;
-        this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
-
-        const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
-        this.container.style.top = driftTop + '%';
-        this.container.style.left = targetLeft + '%'; 
-    }
-
-    switchToHideMode() {
-        this.currentMode = 'HIDE';
-        this.frameIndex = 0;
-    }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    // Inject a hidden diagnostic visual logger to the UI
-    const logDiv = document.createElement('div');
-    logDiv.style = "position:absolute; top:10px; left:10px; color:#00ff00; font-family:monospace; font-size:14px; z-index:999; transform:scaleX(-1);";
-    logDiv.innerText = "Status: Waiting for tap...";
-    document.body.appendChild(logDiv);
-
-    const ghosts = [
-        new BooGhost('boo1', 'img-boo1', 20),
-        new BooGhost('boo2', 'img-boo2', 45),
-        new BooGhost('boo3', 'img-boo3', 75)
-    ];
-
-    let globalHideTimeout;
-    const speedPerPercent = 3500 / 100; 
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true; // Shows rough drafts of words while you talk
-        recognition.lang = 'en-GB';
-
-        recognition.onstart = () => {
-            logDiv.innerText = "Status: Listening for Alexa...";
-        };
-
-        recognition.onerror = (event) => {
-            logDiv.innerText = "Mic Error: " + event.error; // Will display 'not-allowed' if blocked
-        };
-
-        recognition.onresult = (event) => {
-            let interimTranscript = '';
-            let finalTranscript = '';
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
+            animateFrames() {
+                if (this.currentMode === 'CHASE') {
+                    this.frameIndex = (this.frameIndex + 1) % chaseFrames.length;
+                    this.img.src = chaseFrames[this.frameIndex];
+                } else if (this.currentMode === 'HIDE') {
+                    this.frameIndex = (this.frameIndex + 1) % hideFrames.length;
+                    this.img.src = hideFrames[this.frameIndex];
                 }
             }
 
-            const currentSpeech = (finalTranscript || interimTranscript).toLowerCase();
-            logDiv.innerText = "Heard: " + currentSpeech;
-
-            // Trigger on fuzzy semantic fragments so background static noise won't break things
-            if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
-                logDiv.innerText = "Executing: MOVE TO GARDEN";
-                clearTimeout(globalHideTimeout);
-
-                ghosts.forEach(ghost => {
-                    if (ghost.getCurrentLeftPercentage() < 60) {
-                        const safeRandomStart = Math.floor(Math.random() * 25) + 65; 
-                        ghost.forcePosition(safeRandomStart);
-                    }
-                });
-
-                let shortestTravelTime = Infinity;
-                ghosts.forEach(ghost => {
-                    const currentPos = ghost.getCurrentLeftPercentage();
-                    const distanceToCover = Math.abs(currentPos - 10);
-                    const travelTime = distanceToCover * speedPerPercent;
-                    if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
-                });
-
-                ghosts.forEach(ghost => ghost.startFlight(10, true));
-
-                globalHideTimeout = setTimeout(() => {
-                    ghosts.forEach(ghost => ghost.switchToHideMode());
-                }, shortestTravelTime);
+            getCurrentLeftPercentage() {
+                // Returns current left value as a raw percentage float
+                const inlineLeft = this.container.style.left;
+                if (inlineLeft.includes('%')) {
+                    return parseFloat(inlineLeft);
+                }
+                // Fallback: If position is frozen in pixels, convert back to a rough percentage
+                const parentWidth = window.innerWidth;
+                const currentPixels = parseFloat(window.getComputedStyle(this.container).left);
+                return (currentPixels / parentWidth) * 100;
             }
 
-            if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
-                logDiv.innerText = "Executing: MOVE TO DOOR";
-                clearTimeout(globalHideTimeout);
-
-                ghosts.forEach(ghost => {
-                    if (ghost.getCurrentLeftPercentage() > 40) {
-                        const safeRandomStart = Math.floor(Math.random() * 25) + 10; 
-                        ghost.forcePosition(safeRandomStart);
-                    }
-                });
-
-                let shortestTravelTime = Infinity;
-                ghosts.forEach(ghost => {
-                    const currentPos = ghost.getCurrentLeftPercentage();
-                    const distanceToCover = Math.abs(90 - currentPos);
-                    const travelTime = distanceToCover * speedPerPercent;
-                    if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
-                });
-
-                ghosts.forEach(ghost => ghost.startFlight(90, false));
-
-                globalHideTimeout = setTimeout(() => {
-                    ghosts.forEach(ghost => ghost.switchToHideMode());
-                }, shortestTravelTime);
+            forcePosition(forcedLeft) {
+                const currentTransition = this.container.style.transition;
+                this.container.style.transition = 'none';
+                this.container.style.left = forcedLeft + '%';
+                this.container.offsetHeight; 
+                this.container.style.transition = currentTransition;
             }
-        };
 
-        recognition.onend = () => { 
-            recognition.start(); 
-        };
+            startFlight(targetLeft, faceLeft) {
+                this.currentMode = 'CHASE';
+                this.frameIndex = 0;
+                this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
 
-        document.getElementById('tap-overlay').addEventListener('click', (e) => {
-            recognition.start();
-            document.getElementById('tap-overlay').style.display = 'none';
-            e.stopPropagation();
+                // Restore active gliding transition settings
+                this.container.style.transition = '';
+
+                const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
+                this.container.style.top = driftTop + '%';
+                this.container.style.left = targetLeft + '%'; 
+            }
+
+            switchToHideMode() {
+                this.currentMode = 'HIDE';
+                this.frameIndex = 0;
+
+                // Instantly capture mid-flight coordinate and freeze movement path
+                const computedLeft = window.getComputedStyle(this.container).left;
+                this.container.style.transition = 'none';
+                this.container.style.left = computedLeft;
+                this.container.offsetHeight; 
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const ghosts = [
+                new BooGhost('boo1', 'img-boo1', 20),
+                new BooGhost('boo2', 'img-boo2', 45),
+                new BooGhost('boo3', 'img-boo3', 75)
+            ];
+
+            let globalHideTimeout;
+            const speedPerPercent = 3500 / 100; 
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-GB';
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i].transcript;
+                        } else {
+                            interimTranscript += event.results[i].transcript;
+                        }
+                    }
+
+                    const currentSpeech = (finalTranscript || interimTranscript).toLowerCase();
+
+                    if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
+                        clearTimeout(globalHideTimeout);
+
+                        ghosts.forEach(ghost => {
+                            if (ghost.getCurrentLeftPercentage() < 60) {
+                                const safeRandomStart = Math.floor(Math.random() * 25) + 65; 
+                                ghost.forcePosition(safeRandomStart);
+                            }
+                        });
+
+                        let shortestTravelTime = Infinity;
+                        ghosts.forEach(ghost => {
+                            const currentPos = ghost.getCurrentLeftPercentage();
+                            const distanceToCover = Math.abs(currentPos - 10);
+                            const travelTime = distanceToCover * speedPerPercent;
+                            if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
+                        });
+
+                        ghosts.forEach(ghost => ghost.startFlight(10, true));
+
+                        globalHideTimeout = setTimeout(() => {
+                            ghosts.forEach(ghost => ghost.switchToHideMode());
+                        }, shortestTravelTime);
+                    }
+
+                    if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
+                        clearTimeout(globalHideTimeout);
+
+                        ghosts.forEach(ghost => {
+                            if (ghost.getCurrentLeftPercentage() > 40) {
+                                const safeRandomStart = Math.floor(Math.random() * 25) + 10; 
+                                ghost.forcePosition(safeRandomStart);
+                            }
+                        });
+
+                        let shortestTravelTime = Infinity;
+                        ghosts.forEach(ghost => {
+                            const currentPos = ghost.getCurrentLeftPercentage();
+                            const distanceToCover = Math.abs(90 - currentPos);
+                            const travelTime = distanceToCover * speedPerPercent;
+                            if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
+                        });
+
+                        ghosts.forEach(ghost => ghost.startFlight(90, false));
+
+                        globalHideTimeout = setTimeout(() => {
+                            ghosts.forEach(ghost => ghost.switchToHideMode());
+                        }, shortestTravelTime);
+                    }
+                };
+
+                recognition.onend = () => { 
+                    recognition.start(); 
+                };
+
+                document.getElementById('tap-overlay').addEventListener('click', (e) => {
+                    recognition.start();
+                    document.getElementById('tap-overlay').style.display = 'none';
+                    e.stopPropagation();
+                });
+            }
         });
-    } else {
-        logDiv.innerText = "Error: API Unsupported";
-    }
-});
-
     </script>
 </body>
 </html>
