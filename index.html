@@ -75,20 +75,25 @@
     <script>
          
     const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
-    const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
+const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
 
-    class BooGhost {
-        constructor(containerId, imageId, verticalOffset) {
-            this.container = document.getElementById(containerId);
-            this.img = document.getElementById(imageId);
-            this.verticalOffset = verticalOffset; 
-            this.currentMode = 'CHASE';
-            this.frameIndex = 0;
-            this.init();
-        }
+class BooGhost {
+    constructor(containerId, imageId, verticalOffset) {
+        this.container = document.getElementById(containerId);
+        this.img = document.getElementById(imageId);
+        this.verticalOffset = verticalOffset;
+        this.currentMode = 'CHASE';
+        this.frameIndex = 0;
+        this.driftInterval = null;
+        this.init();
+    }
 
     init() {
+        // Cycle frames smoothly every 250ms
         setInterval(() => this.animateFrames(), 250);
+        
+        // Start ambient idle drifting by default
+        this.startAmbientDrift();
     }
 
     animateFrames() {
@@ -108,27 +113,68 @@
     }
 
     forcePosition(forcedLeft) {
+        this.stopAmbientDrift();
         const currentTransition = this.container.style.transition;
         this.container.style.transition = 'none';
         this.container.style.left = forcedLeft + '%';
-        this.container.offsetHeight; 
+        this.container.offsetHeight; // Force reflow
         this.container.style.transition = currentTransition;
     }
 
+    // New: Starts a slow, gentle random wander across the screen area
+    startAmbientDrift() {
+        this.stopAmbientDrift();
+        this.currentMode = 'CHASE';
+        
+        // Update transition speed to be slower and gentler for idling (4 seconds)
+        this.container.style.transition = 'top 4s ease-in-out, left 4s ease-in-out';
+        
+        const doDrift = () => {
+            if (this.currentMode === 'CHASE') {
+                const randomTop = Math.floor(Math.random() * 60) + 20;
+                const randomLeft = Math.floor(Math.random() * 60) + 20;
+                
+                // Keep the orientation matching their movement direction
+                const currentLeft = this.getCurrentLeftPercentage();
+                this.img.style.transform = randomLeft < currentLeft ? 'scaleX(-1)' : 'scaleX(1)';
+                
+                this.container.style.top = randomTop + '%';
+                this.container.style.left = randomLeft + '%';
+            }
+        };
+        
+        doDrift();
+        this.driftInterval = setInterval(doDrift, 4200);
+    }
+
+    stopAmbientDrift() {
+        if (this.driftInterval) {
+            clearInterval(this.driftInterval);
+            this.driftInterval = null;
+        }
+    }
+
     startFlight(targetLeft, faceLeft) {
+        this.stopAmbientDrift();
         this.currentMode = 'CHASE';
         this.frameIndex = 0;
+        this.img.src = chaseFrames[0]; 
         this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
-
+        
+        // Return transition settings back to quick linear travel speed for voice events
+        this.container.style.transition = 'top 3.5s ease-in-out, left 3.5s linear';
+        
         const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
         this.container.style.top = driftTop + '%';
-        this.container.style.left = targetLeft + '%'; 
+        this.container.style.left = targetLeft + '%';
     }
 
     switchToHideMode() {
+        this.stopAmbientDrift();
         this.currentMode = 'HIDE';
         this.frameIndex = 0;
-        this.img.src = hideFrames[0];
+        this.img.src = hideFrames[0]; 
+
         const currentLeft = this.container.style.left;
         const currentTop = this.container.style.top;
         this.container.style.left = currentLeft;
@@ -137,7 +183,6 @@
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Inject a hidden diagnostic visual logger to the UI
     const logDiv = document.createElement('div');
     logDiv.style = "position:absolute; top:10px; left:10px; color:#00ff00; font-family:monospace; font-size:14px; z-index:999;";
     logDiv.innerText = "Status: Waiting for tap...";
@@ -150,22 +195,31 @@ document.addEventListener("DOMContentLoaded", () => {
     ];
 
     let globalHideTimeout;
-    const speedPerPercent = 3500 / 100; 
+    let idleReturnTimeout; // Tracks the 30-second inactive clock
+    const speedPerPercent = 3500 / 100;
+
+    function resetIdleTimeout() {
+        clearTimeout(idleReturnTimeout);
+        idleReturnTimeout = setTimeout(() => {
+            logDiv.innerText = "Status: Idle (No voice commands for 30s) - Ambient Drifting";
+            ghosts.forEach(ghost => ghost.startAmbientDrift());
+        }, 30000); // 30 seconds of stillness drops them back to random flight
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
-        recognition.interimResults = true; // Shows rough drafts of words while you talk
+        recognition.interimResults = true;
         recognition.lang = 'en-GB';
 
         recognition.onstart = () => {
             logDiv.innerText = "Status: Listening for Alexa...";
+            resetIdleTimeout();
         };
 
         recognition.onerror = (event) => {
-            logDiv.innerText = "Mic Error: " + event.error; // Will display 'not-allowed' if blocked
+            logDiv.innerText = "Mic Error: " + event.error;
         };
 
         recognition.onresult = (event) => {
@@ -174,23 +228,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
+                    finalTranscript += event.results[i].transcript;
                 } else {
-                    interimTranscript += event.results[i][0].transcript;
+                    interimTranscript += event.results[i].transcript;
                 }
             }
 
             const currentSpeech = (finalTranscript || interimTranscript).toLowerCase();
             logDiv.innerText = "Heard: " + currentSpeech;
 
-            // Trigger on fuzzy semantic fragments so background static noise won't break things
             if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
                 logDiv.innerText = "Executing: MOVE TO GARDEN";
                 clearTimeout(globalHideTimeout);
+                clearTimeout(idleReturnTimeout);
 
                 ghosts.forEach(ghost => {
                     if (ghost.getCurrentLeftPercentage() < 60) {
-                        const safeRandomStart = Math.floor(Math.random() * 25) + 65; 
+                        const safeRandomStart = Math.floor(Math.random() * 25) + 65;
                         ghost.forcePosition(safeRandomStart);
                     }
                 });
@@ -207,16 +261,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 globalHideTimeout = setTimeout(() => {
                     ghosts.forEach(ghost => ghost.switchToHideMode());
+                    resetIdleTimeout(); // Start counting down 30s once they freeze
                 }, shortestTravelTime);
             }
 
             if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
                 logDiv.innerText = "Executing: MOVE TO DOOR";
                 clearTimeout(globalHideTimeout);
+                clearTimeout(idleReturnTimeout);
 
                 ghosts.forEach(ghost => {
                     if (ghost.getCurrentLeftPercentage() > 40) {
-                        const safeRandomStart = Math.floor(Math.random() * 25) + 10; 
+                        const safeRandomStart = Math.floor(Math.random() * 25) + 10;
                         ghost.forcePosition(safeRandomStart);
                     }
                 });
@@ -233,12 +289,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 globalHideTimeout = setTimeout(() => {
                     ghosts.forEach(ghost => ghost.switchToHideMode());
+                    resetIdleTimeout(); // Start counting down 30s once they freeze
                 }, shortestTravelTime);
             }
         };
 
-        recognition.onend = () => { 
-            recognition.start(); 
+        recognition.onend = () => {
+            recognition.start();
         };
 
         document.getElementById('tap-overlay').addEventListener('click', (e) => {
@@ -246,13 +303,12 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('tap-overlay').style.display = 'none';
             e.stopPropagation();
         });
+
     } else {
         logDiv.innerText = "Error: API Unsupported";
     }
 });
-               
-                
-                
+   
     </script>
 </body>
 </html>
