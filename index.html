@@ -73,6 +73,75 @@
     </div>
 
     <script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boo Projector - Fixed</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            cursor: pointer;
+        }
+        #projector-view {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            transform: scaleX(-1);
+        }
+        .boo-character {
+            width: 15vw;
+            height: 15vh;
+            position: absolute !important;
+            transform: translate(-50%, -50%);
+            transition: top 3.5s ease-in-out, left 3.5s linear;
+        }
+        .boo-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.2s ease-in-out;
+        }
+        #tap-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            font-family: sans-serif;
+            font-size: 1.5rem;
+            color: #e65c00;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="tap-overlay">🎃 Tap screen to activate Boo Microphone 🎃</div>
+
+    <div id="projector-view">
+        <div id="boo1" class="boo-character" style="top: 20%; left: 65%;">
+            <img id="img-boo1" class="boo-image" src="boo-chase-1.png" alt="Boo 1">
+        </div>
+        <div id="boo2" class="boo-character" style="top: 45%; left: 80%;">
+            <img id="img-boo2" class="boo-image" src="boo-chase-1.png" alt="Boo 2">
+        </div>
+        <div id="boo3" class="boo-character" style="top: 75%; left: 70%;">
+            <img id="img-boo3" class="boo-image" src="boo-chase-1.png" alt="Boo 3">
+        </div>
+    </div>
+
+<script>
 const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
 const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
 
@@ -105,7 +174,6 @@ class BooGhost {
     }
 
     getCurrentLeftPercentage() {
-        // Fallback calculations using pixel coordinates if style parsing fails
         const leftStr = this.container.style.left;
         if (leftStr.includes('%')) return parseFloat(leftStr);
         const parentWidth = window.innerWidth;
@@ -115,8 +183,6 @@ class BooGhost {
     startAmbientDrift() {
         this.stopAmbientDrift();
         this.currentMode = 'CHASE';
-        
-        // Gentle transition time for idle floating
         this.container.style.transition = 'top 4s ease-in-out, left 4s ease-in-out';
         
         const doDrift = () => {
@@ -147,10 +213,9 @@ class BooGhost {
         this.stopAmbientDrift();
         this.currentMode = 'CHASE';
         this.frameIndex = 0;
-        this.img.src = chaseFrames[0];
+        this.img.src = chaseFrames[0]; // FIXED: Access the first string element safely
         this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
         
-        // Quick linear travel speed straight to the destination edge
         this.container.style.transition = 'top 3.5s ease-in-out, left 3.5s linear';
         
         const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
@@ -162,14 +227,12 @@ class BooGhost {
         this.stopAmbientDrift();
         this.currentMode = 'HIDE';
         this.frameIndex = 0;
-        this.img.src = hideFrames[0];
+        this.img.src = hideFrames[0]; // FIXED: Access the first string element safely
 
-        // FIXED: Capture the exact pixel layout position mid-flight
         const computedStyle = window.getComputedStyle(this.container);
         const currentLeftPixels = computedStyle.left;
         const currentTopPixels = computedStyle.top;
 
-        // FIXED: Strip transitions entirely to force an immediate structural freeze
         this.container.style.transition = 'none';
         this.container.style.left = currentLeftPixels;
         this.container.style.top = currentTopPixels;
@@ -179,7 +242,7 @@ class BooGhost {
 document.addEventListener("DOMContentLoaded", () => {
     const logDiv = document.createElement('div');
     logDiv.style = "position:absolute; top:10px; left:10px; color:#00ff00; font-family:monospace; font-size:14px; z-index:999;";
-    logDiv.innerText = "Status: Waiting for tap...";
+    logDiv.innerText = "v1.1 Status: Waiting for tap...";
     document.body.appendChild(logDiv);
 
     const ghosts = [
@@ -240,8 +303,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     clearTimeout(globalHideTimeout);
                     clearTimeout(idleReturnTimeout);
 
-                    // REMOVED: forcePosition teleport loop has been cleanly deleted.
-
                     let shortestTravelTime = Infinity;
                     ghosts.forEach(ghost => {
                         const currentPos = ghost.getCurrentLeftPercentage();
@@ -262,8 +323,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     logDiv.innerText = "Executing: MOVE TO DOOR";
                     clearTimeout(globalHideTimeout);
                     clearTimeout(idleReturnTimeout);
-
-                    // REMOVED: forcePosition teleport loop has been cleanly deleted.
 
                     let shortestTravelTime = Infinity;
                     ghosts.forEach(ghost => {
