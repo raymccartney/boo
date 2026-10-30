@@ -74,18 +74,18 @@
 
     <script>
          
-     const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
-const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
+    const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
+    const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
 
-class BooGhost {
-    constructor(containerId, imageId, verticalOffset) {
-        this.container = document.getElementById(containerId);
-        this.img = document.getElementById(imageId);
-        this.verticalOffset = verticalOffset; 
-        this.currentMode = 'CHASE';
-        this.frameIndex = 0;
-        this.init();
-    }
+    class BooGhost {
+        constructor(containerId, imageId, verticalOffset) {
+            this.container = document.getElementById(containerId);
+            this.img = document.getElementById(imageId);
+            this.verticalOffset = verticalOffset; 
+            this.currentMode = 'CHASE';
+            this.frameIndex = 0;
+            this.init();
+        }
 
     init() {
         setInterval(() => this.animateFrames(), 250);
@@ -96,8 +96,10 @@ class BooGhost {
             this.frameIndex = (this.frameIndex + 1) % chaseFrames.length;
             this.img.src = chaseFrames[this.frameIndex];
         } else if (this.currentMode === 'HIDE') {
-            this.frameIndex = (this.frameIndex + 1) % hideFrames.length;
-            this.img.src = hideFrames[this.frameIndex];
+            if (this.frameIndex < hideFrames.length - 1) {
+                this.frameIndex++;
+                this.img.src = hideFrames[this.frameIndex];
+            }
         }
     }
 
@@ -126,6 +128,11 @@ class BooGhost {
     switchToHideMode() {
         this.currentMode = 'HIDE';
         this.frameIndex = 0;
+        this.img.src = hideFrames[0];
+        const currentLeft = this.container.style.left;
+        const currentTop = this.container.style.top;
+        this.container.style.left = currentLeft;
+        this.container.style.top = currentTop;
     }
 }
 
