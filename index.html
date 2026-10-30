@@ -101,12 +101,10 @@
             }
 
             getCurrentLeftPercentage() {
-                // Returns current left value as a raw percentage float
                 const inlineLeft = this.container.style.left;
                 if (inlineLeft.includes('%')) {
                     return parseFloat(inlineLeft);
                 }
-                // Fallback: If position is frozen in pixels, convert back to a rough percentage
                 const parentWidth = window.innerWidth;
                 const currentPixels = parseFloat(window.getComputedStyle(this.container).left);
                 return (currentPixels / parentWidth) * 100;
@@ -124,8 +122,6 @@
                 this.currentMode = 'CHASE';
                 this.frameIndex = 0;
                 this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
-
-                // Restore active gliding transition settings
                 this.container.style.transition = '';
 
                 const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
@@ -137,7 +133,6 @@
                 this.currentMode = 'HIDE';
                 this.frameIndex = 0;
 
-                // Instantly capture mid-flight coordinate and freeze movement path
                 const computedLeft = window.getComputedStyle(this.container).left;
                 this.container.style.transition = 'none';
                 this.container.style.left = computedLeft;
@@ -159,6 +154,8 @@
             
             if (SpeechRecognition) {
                 const recognition = new SpeechRecognition();
+                
+                // CRITICAL FIXES: Keep the microphone pipeline streaming infinitely 
                 recognition.continuous = true;
                 recognition.interimResults = true;
                 recognition.lang = 'en-GB';
@@ -177,6 +174,7 @@
 
                     const currentSpeech = (finalTranscript || interimTranscript).toLowerCase();
 
+                    // Trigger commands securely in memory without logging text anywhere
                     if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
                         clearTimeout(globalHideTimeout);
 
@@ -228,6 +226,7 @@
                     }
                 };
 
+                // Auto-recovery mechanism if the mobile OS tries to pause the mic session
                 recognition.onend = () => { 
                     recognition.start(); 
                 };
