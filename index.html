@@ -155,26 +155,21 @@
             if (SpeechRecognition) {
                 const recognition = new SpeechRecognition();
                 
-                // CRITICAL FIXES: Keep the microphone pipeline streaming infinitely 
                 recognition.continuous = true;
                 recognition.interimResults = true;
                 recognition.lang = 'en-GB';
 
                 recognition.onresult = (event) => {
-                    let interimTranscript = '';
-                    let finalTranscript = '';
-
+                    let textBuffer = '';
+                    
+                    // Parse text from the browser's speech event memory array
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i].transcript;
-                        } else {
-                            interimTranscript += event.results[i].transcript;
-                        }
+                        textBuffer += event.results[i][0].transcript;
                     }
 
-                    const currentSpeech = (finalTranscript || interimTranscript).toLowerCase();
+                    const currentSpeech = textBuffer.toLowerCase();
 
-                    // Trigger commands securely in memory without logging text anywhere
+                    // Trigger commands securely in system memory
                     if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
                         clearTimeout(globalHideTimeout);
 
@@ -226,7 +221,6 @@
                     }
                 };
 
-                // Auto-recovery mechanism if the mobile OS tries to pause the mic session
                 recognition.onend = () => { 
                     recognition.start(); 
                 };
