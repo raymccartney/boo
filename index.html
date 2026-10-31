@@ -68,23 +68,24 @@
     <script>
     const chaseFrames = ['boo-chase-1.png', 'boo-chase-2.png', 'boo-chase-3.png'];
     const hideFrames = ['boo-hide-1.png', 'boo-hide-2.png'];
-
+    
     class BooGhost {
-        constructor(containerId, imageId, verticalOffset) {
+        constructor(containerId, imageId, verticalOffset, initialLeft) {
             this.container = document.getElementById(containerId);
             this.img = document.getElementById(imageId);
             this.verticalOffset = verticalOffset;
+            this.currentLeft = initialLeft; 
             this.currentMode = 'CHASE';
             this.frameIndex = 0;
             this.driftInterval = null;
             this.init();
         }
-
+    
         init() {
             setInterval(() => this.animateFrames(), 250);
             this.startAmbientDrift();
         }
-
+    
         animateFrames() {
             if (this.currentMode === 'CHASE') {
                 this.frameIndex = (this.frameIndex + 1) % chaseFrames.length;
@@ -96,14 +97,7 @@
                 }
             }
         }
-
-        getCurrentLeftPercentage() {
-            const leftStr = this.container.style.left;
-            if (leftStr.includes('%')) return parseFloat(leftStr);
-            const parentWidth = window.innerWidth;
-            return (this.container.offsetLeft / parentWidth) * 100;
-        }
-
+    
         startAmbientDrift() {
             this.stopAmbientDrift();
             this.currentMode = 'CHASE';
@@ -114,16 +108,16 @@
                     const randomTop = Math.floor(Math.random() * 60) + 20;
                     const randomLeft = Math.floor(Math.random() * 60) + 20;
                     
-                    const currentLeft = this.getCurrentLeftPercentage();
-                    this.img.style.transform = randomLeft < currentLeft ? 'scaleX(-1)' : 'scaleX(1)';
+                    this.img.style.transform = randomLeft < this.currentLeft ? 'scaleX(-1)' : 'scaleX(1)';
                     
+                    this.currentLeft = randomLeft;
                     this.container.style.top = randomTop + '%';
                     this.container.style.left = randomLeft + '%';
                 }
             };
             
             doDrift();
-            this.driftInterval = setInterval(doDrift, 4200);
+            this.driftInterval = setInterval(doDrift, 4500);
         }
     
         stopAmbientDrift() {
@@ -143,6 +137,7 @@
             this.container.style.transition = 'top 3.5s ease-in-out, left 3.5s linear';
             
             const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
+            this.currentLeft = targetLeft;
             this.container.style.top = driftTop + '%';
             this.container.style.left = targetLeft + '%';
         }
@@ -151,133 +146,133 @@
             this.stopAmbientDrift();
             this.currentMode = 'HIDE';
             this.frameIndex = 0;
-            this.img.src = hideFrames[0]; 
+            this.img.src = hideFrames[0];
     
             const computedStyle = window.getComputedStyle(this.container);
             const currentLeftPixels = computedStyle.left;
             const currentTopPixels = computedStyle.top;
-            
+    
+            this.currentLeft = (parseFloat(currentLeftPixels) / window.innerWidth) * 100;
+    
             this.container.style.transition = 'none';
             this.container.style.left = currentLeftPixels;
             this.container.style.top = currentTopPixels;
         }
     }
-
+    
     document.addEventListener("DOMContentLoaded", () => {
         const logDiv = document.createElement('div');
         logDiv.style = "position:absolute; top:10px; left:10px; color:#00ff00; font-family:monospace; font-size:14px; z-index:999;";
-        logDiv.innerText = "v3 Status: Waiting for tap...";
+        logDiv.innerText = "Status: Waiting for tap...";
         document.body.appendChild(logDiv);
     
         const ghosts = [
-            new BooGhost('boo1', 'img-boo1', 20),
-            new BooGhost('boo2', 'img-boo2', 45),
-            new BooGhost('boo3', 'img-boo3', 75)
+            new BooGhost('boo1', 'img-boo1', 20, 65),
+            new BooGhost('boo2', 'img-boo2', 45, 80),
+            new BooGhost('boo3', 'img-boo3', 75, 70)
         ];
-
+    
         let globalHideTimeout;
         let idleReturnTimeout; 
         const speedPerPercent = 3500 / 100;
-
+        let shouldListen = false;
+    
         function resetIdleTimeout() {
             clearTimeout(idleReturnTimeout);
             idleReturnTimeout = setTimeout(() => {
-                logDiv.innerText = "v3 Status: Idle (No voice commands for 30s) - Ambient Drifting";
+                logDiv.innerText = "Status: Idle - Ambient Drifting";
                 ghosts.forEach(ghost => ghost.startAmbientDrift());
             }, 30000); 
         }
-
+    
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
-            recognition.continuous = true;
+            
+            recognition.continuous = false; 
             recognition.interimResults = true;
             recognition.lang = 'en-GB';
     
             recognition.onstart = () => {
-                logDiv.innerText = "v3 Status: Listening for Alexa...";
-                resetIdleTimeout();
+                logDiv.innerText = "Status: Listening for Alexa...";
             };
-
+    
             recognition.onerror = (event) => {
-                logDiv.innerText = "v3 Mic Error: " + event.error;
-            };
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-    
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i] && event.results[i][0]) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript;
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
-                    }
+                if (event.error !== 'no-speech') {
+                    logDiv.innerText = "Mic Error: " + event.error;
                 }
-
-                const currentSpeech = (finalTranscript || interimTranscript || '').toLowerCase().trim();
-            
-                if (currentSpeech) {
-                    logDiv.innerText = "bro said: " + currentSpeech;
-
-                    if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
-                        logDiv.innerText = "lets go: get the peeps at the gate";
-                        clearTimeout(globalHideTimeout);
-                        clearTimeout(idleReturnTimeout);
-
-                        let shortestTravelTime = Infinity;
-                        ghosts.forEach(ghost => {
-                            const currentPos = ghost.getCurrentLeftPercentage();
-                            const distanceToCover = Math.abs(currentPos - 10);
-                            const travelTime = distanceToCover * speedPerPercent;
-                            if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
-                        });
-
-                       ghosts.forEach(ghost => ghost.startFlight(10, true));
-
-                        globalHideTimeout = setTimeout(() => {
-                            ghosts.forEach(ghost => ghost.switchToHideMode());
-                            resetIdleTimeout(); 
-                        }, shortestTravelTime);
-                    }
-
-                    if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
-                        logDiv.innerText = "lets go: get the peeps at the door";
-                        clearTimeout(globalHideTimeout);
-                        clearTimeout(idleReturnTimeout);
+            };
     
-                        let shortestTravelTime = Infinity;
-                        ghosts.forEach(ghost => {
-                            const currentPos = ghost.getCurrentLeftPercentage();
-                            const distanceToCover = Math.abs(90 - currentPos);
-                            const travelTime = distanceToCover * speedPerPercent;
-                            if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
-                        });
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
     
-                        ghosts.forEach(ghost => ghost.startFlight(90, false));
+                const currentSpeech = transcript.toLowerCase().trim();
+                logDiv.innerText = "Heard: " + currentSpeech;
     
-                        globalHideTimeout = setTimeout(() => {
-                            ghosts.forEach(ghost => ghost.switchToHideMode());
-                            resetIdleTimeout(); 
-                        }, shortestTravelTime);
-                    }
+                if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
+                    logDiv.innerText = "Executing: MOVE TO GARDEN";
+                    clearTimeout(globalHideTimeout);
+                    clearTimeout(idleReturnTimeout);
+    
+                    let shortestTravelTime = Infinity;
+                    ghosts.forEach(ghost => {
+                        const distanceToCover = Math.abs(ghost.currentLeft - 10);
+                        const travelTime = distanceToCover * speedPerPercent;
+                        if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
+                    });
+    
+                    ghosts.forEach(ghost => ghost.startFlight(10, true));
+    
+                    globalHideTimeout = setTimeout(() => {
+                        ghosts.forEach(ghost => ghost.switchToHideMode());
+                        resetIdleTimeout(); 
+                    }, shortestTravelTime);
+                    
+                    recognition.stop();
+                }
+    
+                if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
+                    logDiv.innerText = "Executing: MOVE TO DOOR";
+                    clearTimeout(globalHideTimeout);
+                    clearTimeout(idleReturnTimeout);
+    
+                    let shortestTravelTime = Infinity;
+                    ghosts.forEach(ghost => {
+                        const distanceToCover = Math.abs(90 - ghost.currentLeft);
+                        const travelTime = distanceToCover * speedPerPercent;
+                        if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
+                    });
+    
+                    ghosts.forEach(ghost => ghost.startFlight(90, false));
+    
+                    globalHideTimeout = setTimeout(() => {
+                        ghosts.forEach(ghost => ghost.switchToHideMode());
+                        resetIdleTimeout(); 
+                    }, shortestTravelTime);
+                    
+                    recognition.stop();
                 }
             };
     
             recognition.onend = () => {
-                try { recognition.start(); } catch(e) {}
+                if (shouldListen) {
+                    try { recognition.start(); } catch(e) {}
+                }
             };
     
             document.getElementById('tap-overlay').addEventListener('click', (e) => {
+                shouldListen = true;
                 recognition.start();
+                resetIdleTimeout();
                 document.getElementById('tap-overlay').style.display = 'none';
                 e.stopPropagation();
             });
     
         } else {
-            logDiv.innerText = "NOPE: your browser is wack";
+            logDiv.innerText = "Error: API Unsupported";
         }
     });
     </script>
