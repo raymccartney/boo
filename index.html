@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boo</title>
+    <title>boo gonna get you</title>
     <style>
         body {
             margin: 0;
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-    <div id="tap-overlay">tap to activate mic</div>
+    <div id="tap-overlay">tap to activate sus listening device</div>
 
     <div id="projector-view">
         <div id="boo1" class="boo-character" style="top: 20%; left: 65%;">
@@ -128,7 +128,6 @@ class BooGhost {
         }
     }
 
-    // FIXED: Accepts an individual calculated duration to ensure uniform speed matching
     startFlight(targetLeft, faceLeft, durationMs) {
         this.stopAmbientDrift();
         this.currentMode = 'CHASE';
@@ -136,7 +135,6 @@ class BooGhost {
         this.img.src = chaseFrames[0]; 
         this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
         
-        // Dynamically match the transition length to the calculated speed duration
         this.container.style.transition = `top ${durationMs}ms ease-in-out, left ${durationMs}ms linear`;
         
         const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
@@ -178,27 +176,25 @@ document.addEventListener("DOMContentLoaded", () => {
     let globalHideTimeout;
     let idleReturnTimeout; 
     
-    // SPEED VELOCITY GOVERNOR: ms per 1% of screen distance covered (Lower = Faster flight)
     const msPerPercentUnit = 45; 
 
     function resetIdleTimeout() {
         clearTimeout(idleReturnTimeout);
         idleReturnTimeout = setTimeout(() => {
-            logDiv.innerText = "Status: Idle - Ambient Drifting";
+            logDiv.innerText = "status: nonchalant haunting";
             ghosts.forEach(ghost => ghost.startAmbientDrift());
         }, 30000); 
     }
 
     function triggerMoveLeft() {
-        logDiv.innerText = "Executing: MOVE TO GARDEN (Left)";
+        logDiv.innerText = "lets go - get the peeps at the gate";
         clearTimeout(globalHideTimeout);
         clearTimeout(idleReturnTimeout);
 
-        const targetLeft = 10; // Left destination boundary percentage
+        const targetLeft = 10; 
         let shortestTravelTime = Infinity;
         const flightPlans = [];
 
-        // 1. Calculate travel times based on distance to ensure identical speed constants
         ghosts.forEach(ghost => {
             const distanceToCover = Math.abs(ghost.currentLeft - targetLeft);
             const calculatedDuration = distanceToCover * msPerPercentUnit;
@@ -210,12 +206,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // 2. Launch all flights passing their explicit, unique sync durations
         flightPlans.forEach(plan => {
             plan.ghost.startFlight(targetLeft, true, plan.duration);
         });
 
-        // 3. Freeze ALL ghosts the absolute millisecond the closest ghost impacts the edge boundary
         globalHideTimeout = setTimeout(() => {
             ghosts.forEach(ghost => ghost.switchToHideMode());
             resetIdleTimeout(); 
@@ -223,11 +217,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function triggerMoveRight() {
-        logDiv.innerText = "Executing: MOVE TO DOOR (Right)";
+        logDiv.innerText = "lets go - get the peeps at the door";
         clearTimeout(globalHideTimeout);
         clearTimeout(idleReturnTimeout);
 
-        const targetLeft = 90; // Right destination boundary percentage
+        const targetLeft = 90; 
         let shortestTravelTime = Infinity;
         const flightPlans = [];
 
@@ -281,12 +275,12 @@ document.addEventListener("DOMContentLoaded", () => {
         recognition.lang = 'en-GB';
 
         recognition.onstart = () => {
-            logDiv.innerText = "Status: Listening for Alexa...";
+            logDiv.innerText = "status: waiting for bro to say something fire";
         };
 
         recognition.onerror = (event) => {
             if (event.error !== 'no-speech') {
-                logDiv.innerText = "Mic Error: " + event.error;
+                logDiv.innerText = "skill issue: yo mic is wack" + event.error;
             }
         };
 
@@ -297,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const currentSpeech = transcript.toLowerCase().trim();
-            logDiv.innerText = "Heard: " + currentSpeech;
+            logDiv.innerText = "someone said: " + currentSpeech;
 
             if (currentSpeech.includes('tootypoots') || currentSpeech.includes('tooty') || currentSpeech.includes('poots')) {
                 triggerMoveLeft();
@@ -323,7 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
     } else {
-        logDiv.innerText = "Error: API Unsupported";
+        logDiv.innerText = "skill issue: yo browser is wack";
     }
 });
 
