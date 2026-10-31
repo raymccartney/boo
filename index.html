@@ -51,7 +51,7 @@
     </style>
 </head>
 <body>
-    <div id="tap-overlay">Tap to activate Mic</div>
+    <div id="tap-overlay">tap to activate mic</div>
 
     <div id="projector-view">
         <div id="boo1" class="boo-character" style="top: 20%; left: 65%;">
@@ -131,7 +131,7 @@
             this.stopAmbientDrift();
             this.currentMode = 'CHASE';
             this.frameIndex = 0;
-            this.img.src = chaseFrames[0];
+            this.img.src = chaseFrames;
             this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
             
             this.container.style.transition = 'top 3.5s ease-in-out, left 3.5s linear';
@@ -146,7 +146,7 @@
             this.stopAmbientDrift();
             this.currentMode = 'HIDE';
             this.frameIndex = 0;
-            this.img.src = hideFrames[0];
+            this.img.src = hideFrames;
     
             const computedStyle = window.getComputedStyle(this.container);
             const currentLeftPixels = computedStyle.left;
@@ -163,7 +163,7 @@
     document.addEventListener("DOMContentLoaded", () => {
         const logDiv = document.createElement('div');
         logDiv.style = "position:absolute; top:10px; left:10px; color:#00ff00; font-family:monospace; font-size:14px; z-index:999;";
-        logDiv.innerText = "Status: Waiting for tap...";
+        logDiv.innerText = "sup: tap the screen daftie...";
         document.body.appendChild(logDiv);
     
         const ghosts = [
@@ -180,79 +180,103 @@
         function resetIdleTimeout() {
             clearTimeout(idleReturnTimeout);
             idleReturnTimeout = setTimeout(() => {
-                logDiv.innerText = "Status: Idle - Ambient Drifting";
+                logDiv.innerText = "sup: nonchalant like";
                 ghosts.forEach(ghost => ghost.startAmbientDrift());
             }, 30000); 
         }
     
+        function triggerMoveLeft() {
+            logDiv.innerText = "lets go: get the peeps at the gate";
+            clearTimeout(globalHideTimeout);
+            clearTimeout(idleReturnTimeout);
+    
+            let shortestTravelTime = Infinity;
+            ghosts.forEach(ghost => {
+                const distanceToCover = Math.abs(ghost.currentLeft - 10);
+                const travelTime = distanceToCover * speedPerPercent;
+                if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
+            });
+    
+            ghosts.forEach(ghost => ghost.startFlight(10, true));
+    
+            globalHideTimeout = setTimeout(() => {
+                ghosts.forEach(ghost => ghost.switchToHideMode());
+                resetIdleTimeout(); 
+            }, shortestTravelTime);
+        }
+    
+        function triggerMoveRight() {
+            logDiv.innerText = "lets go: get the peeps at the door";
+            clearTimeout(globalHideTimeout);
+            clearTimeout(idleReturnTimeout);
+    
+            let shortestTravelTime = Infinity;
+            ghosts.forEach(ghost => {
+                const distanceToCover = Math.abs(90 - ghost.currentLeft);
+                const travelTime = distanceToCover * speedPerPercent;
+                if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
+            });
+    
+            ghosts.forEach(ghost => ghost.startFlight(90, false));
+    
+            globalHideTimeout = setTimeout(() => {
+                ghosts.forEach(ghost => ghost.switchToHideMode());
+                resetIdleTimeout(); 
+            }, shortestTravelTime);
+        }
+    
+        document.addEventListener('keydown', (event) => {
+            if (document.getElementById('tap-overlay').style.display === 'none') {
+                if (event.key.toLowerCase() === 'a') {
+                    triggerMoveLeft();
+                } else if (event.key.toLowerCase() === 'd') {
+                    triggerMoveRight();
+                }
+            }
+        });
+    
+        document.getElementById('projector-view').addEventListener('click', (event) => {
+            const screenWidth = window.innerWidth;
+            const clickX = event.clientX;
+    
+            if (clickX < screenWidth / 2) {
+                triggerMoveLeft();
+            } else {
+                triggerMoveRight();
+            }
+        });
+    
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
-            
             recognition.continuous = false; 
             recognition.interimResults = true;
             recognition.lang = 'en-GB';
     
             recognition.onstart = () => {
-                logDiv.innerText = "Status: Listening for Alexa...";
+                logDiv.innerText = "sup: say something...";
             };
     
             recognition.onerror = (event) => {
                 if (event.error !== 'no-speech') {
-                    logDiv.innerText = "Mic Error: " + event.error;
+                    logDiv.innerText = "skill issue: your mic is wack" + event.error;
                 }
             };
     
             recognition.onresult = (event) => {
                 let transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    transcript += event.results[i][0].transcript;
+                    transcript += event.results[i].transcript;
                 }
     
                 const currentSpeech = transcript.toLowerCase().trim();
                 logDiv.innerText = "Heard: " + currentSpeech;
     
                 if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
-                    logDiv.innerText = "Executing: MOVE TO GARDEN";
-                    clearTimeout(globalHideTimeout);
-                    clearTimeout(idleReturnTimeout);
-    
-                    let shortestTravelTime = Infinity;
-                    ghosts.forEach(ghost => {
-                        const distanceToCover = Math.abs(ghost.currentLeft - 10);
-                        const travelTime = distanceToCover * speedPerPercent;
-                        if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
-                    });
-    
-                    ghosts.forEach(ghost => ghost.startFlight(10, true));
-    
-                    globalHideTimeout = setTimeout(() => {
-                        ghosts.forEach(ghost => ghost.switchToHideMode());
-                        resetIdleTimeout(); 
-                    }, shortestTravelTime);
-                    
+                    triggerMoveLeft();
                     recognition.stop();
-                }
-    
-                if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
-                    logDiv.innerText = "Executing: MOVE TO DOOR";
-                    clearTimeout(globalHideTimeout);
-                    clearTimeout(idleReturnTimeout);
-    
-                    let shortestTravelTime = Infinity;
-                    ghosts.forEach(ghost => {
-                        const distanceToCover = Math.abs(90 - ghost.currentLeft);
-                        const travelTime = distanceToCover * speedPerPercent;
-                        if (travelTime < shortestTravelTime) shortestTravelTime = travelTime;
-                    });
-    
-                    ghosts.forEach(ghost => ghost.startFlight(90, false));
-    
-                    globalHideTimeout = setTimeout(() => {
-                        ghosts.forEach(ghost => ghost.switchToHideMode());
-                        resetIdleTimeout(); 
-                    }, shortestTravelTime);
-                    
+                } else if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
+                    triggerMoveRight();
                     recognition.stop();
                 }
             };
@@ -272,9 +296,10 @@
             });
     
         } else {
-            logDiv.innerText = "Error: API Unsupported";
+            logDiv.innerText = "skill issue: your browser is wack";
         }
     });
+
     </script>
 </body>
 </html>
