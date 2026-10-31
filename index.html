@@ -293,10 +293,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const currentSpeech = transcript.toLowerCase().trim();
             logDiv.innerText = "someone said: " + currentSpeech;
 
-            if (currentSpeech.includes('boo gate') || currentSpeech.includes('gate') {
+            if (currentSpeech.includes('boo gate') || currentSpeech.includes('gate'){
                 triggerMoveLeft();
                 recognition.stop();
-            }else if (currentSpeech.includes('boo door') || currentSpeech.includes('door') {
+            }else if (currentSpeech.includes('boo door') || currentSpeech.includes('door'){
                 triggerMoveRight();
                 recognition.stop();
             }
