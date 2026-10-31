@@ -299,10 +299,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const currentSpeech = transcript.toLowerCase().trim();
             logDiv.innerText = "Heard: " + currentSpeech;
 
-            if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
+            if (currentSpeech.includes('tootypoots') || currentSpeech.includes('tooty') || currentSpeech.includes('poots')) {
                 triggerMoveLeft();
                 recognition.stop();
-            } else if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
+            }else if (currentSpeech.includes('heehaw') || currentSpeech.includes('hee') || currentSpeech.includes('haw')) {
                 triggerMoveRight();
                 recognition.stop();
             }
