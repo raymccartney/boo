@@ -128,14 +128,16 @@ class BooGhost {
         }
     }
 
-    startFlight(targetLeft, faceLeft) {
+    // FIXED: Accepts an individual calculated duration to ensure uniform speed matching
+    startFlight(targetLeft, faceLeft, durationMs) {
         this.stopAmbientDrift();
         this.currentMode = 'CHASE';
         this.frameIndex = 0;
         this.img.src = chaseFrames[0]; 
         this.img.style.transform = faceLeft ? 'scaleX(-1)' : 'scaleX(1)';
         
-        this.container.style.transition = 'top 3.5s ease-in-out, left 3.5s linear';
+        // Dynamically match the transition length to the calculated speed duration
+        this.container.style.transition = `top ${durationMs}ms ease-in-out, left ${durationMs}ms linear`;
         
         const driftTop = this.verticalOffset + (Math.floor(Math.random() * 10) - 5);
         this.currentLeft = targetLeft;
@@ -148,7 +150,7 @@ class BooGhost {
         this.currentMode = 'HIDE';
         this.frameIndex = 0;
         this.img.src = hideFrames[0]; 
-        
+
         const computedStyle = window.getComputedStyle(this.container);
         const currentLeftPixels = computedStyle.left;
         const currentTopPixels = computedStyle.top;
@@ -175,116 +177,156 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let globalHideTimeout;
     let idleReturnTimeout; 
-    const travelDuration = 3500; 
     
+    // SPEED VELOCITY GOVERNOR: ms per 1% of screen distance covered (Lower = Faster flight)
+    const msPerPercentUnit = 45; 
+
     function resetIdleTimeout() {
         clearTimeout(idleReturnTimeout);
         idleReturnTimeout = setTimeout(() => {
-            logDiv.innerText = "sup: nonchalant like";
+            logDiv.innerText = "Status: Idle - Ambient Drifting";
             ghosts.forEach(ghost => ghost.startAmbientDrift());
         }, 30000); 
     }
 
-        function triggerMoveLeft() {
-            logDiv.innerText = "lets go: get the peeps at the gate";
-            clearTimeout(globalHideTimeout);
-            clearTimeout(idleReturnTimeout);
+    function triggerMoveLeft() {
+        logDiv.innerText = "Executing: MOVE TO GARDEN (Left)";
+        clearTimeout(globalHideTimeout);
+        clearTimeout(idleReturnTimeout);
 
-            ghosts.forEach(ghost => ghost.startFlight(10, true));
+        const targetLeft = 10; // Left destination boundary percentage
+        let shortestTravelTime = Infinity;
+        const flightPlans = [];
 
-            globalHideTimeout = setTimeout(() => {
-                ghosts.forEach(ghost => ghost.switchToHideMode());
-                resetIdleTimeout(); 
-            }, travelDuration);
-        }
+        // 1. Calculate travel times based on distance to ensure identical speed constants
+        ghosts.forEach(ghost => {
+            const distanceToCover = Math.abs(ghost.currentLeft - targetLeft);
+            const calculatedDuration = distanceToCover * msPerPercentUnit;
+            
+            flightPlans.push({ ghost: ghost, duration: calculatedDuration });
 
-        function triggerMoveRight() {
-            logDiv.innerText = "lets go: get the peeps at the door";
-            clearTimeout(globalHideTimeout);
-            clearTimeout(idleReturnTimeout);
-
-            ghosts.forEach(ghost => ghost.startFlight(90, false));
-
-            globalHideTimeout = setTimeout(() => {
-                ghosts.forEach(ghost => ghost.switchToHideMode());
-                resetIdleTimeout(); 
-            }, travelDuration);
-        }   
-
-        document.addEventListener('keydown', (event) => {
-            if (document.getElementById('tap-overlay').style.display === 'none') {
-                if (event.key.toLowerCase() === 'a') {
-                    triggerMoveLeft();
-                } else if (event.key.toLowerCase() === 'd') {
-                    triggerMoveRight();
-                }
+            if (calculatedDuration < shortestTravelTime) {
+                shortestTravelTime = calculatedDuration;
             }
         });
 
-        document.getElementById('projector-view').addEventListener('click', (event) => {
-            const screenWidth = window.innerWidth;
-            const clickX = event.clientX;
+        // 2. Launch all flights passing their explicit, unique sync durations
+        flightPlans.forEach(plan => {
+            plan.ghost.startFlight(targetLeft, true, plan.duration);
+        });
 
-            if (clickX < screenWidth / 2) {
+        // 3. Freeze ALL ghosts the absolute millisecond the closest ghost impacts the edge boundary
+        globalHideTimeout = setTimeout(() => {
+            ghosts.forEach(ghost => ghost.switchToHideMode());
+            resetIdleTimeout(); 
+        }, shortestTravelTime);
+    }
+
+    function triggerMoveRight() {
+        logDiv.innerText = "Executing: MOVE TO DOOR (Right)";
+        clearTimeout(globalHideTimeout);
+        clearTimeout(idleReturnTimeout);
+
+        const targetLeft = 90; // Right destination boundary percentage
+        let shortestTravelTime = Infinity;
+        const flightPlans = [];
+
+        ghosts.forEach(ghost => {
+            const distanceToCover = Math.abs(targetLeft - ghost.currentLeft);
+            const calculatedDuration = distanceToCover * msPerPercentUnit;
+            
+            flightPlans.push({ ghost: ghost, duration: calculatedDuration });
+
+            if (calculatedDuration < shortestTravelTime) {
+                shortestTravelTime = calculatedDuration;
+            }
+        });
+
+        flightPlans.forEach(plan => {
+            plan.ghost.startFlight(targetLeft, false, plan.duration);
+        });
+
+        globalHideTimeout = setTimeout(() => {
+            ghosts.forEach(ghost => ghost.switchToHideMode());
+            resetIdleTimeout(); 
+        }, shortestTravelTime);
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (document.getElementById('tap-overlay').style.display === 'none') {
+            if (event.key.toLowerCase() === 'a') {
                 triggerMoveLeft();
-            } else {
+            } else if (event.key.toLowerCase() === 'd') {
                 triggerMoveRight();
             }
+        }
+    });
+
+    document.getElementById('projector-view').addEventListener('click', (event) => {
+        const screenWidth = window.innerWidth;
+        const clickX = event.clientX;
+
+        if (clickX < screenWidth / 2) {
+            triggerMoveLeft();
+        } else {
+            triggerMoveRight();
+        }
+    });
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false; 
+        recognition.interimResults = true;
+        recognition.lang = 'en-GB';
+
+        recognition.onstart = () => {
+            logDiv.innerText = "Status: Listening for Alexa...";
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error !== 'no-speech') {
+                logDiv.innerText = "Mic Error: " + event.error;
+            }
+        };
+
+        recognition.onresult = (event) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                transcript += event.results[i].transcript;
+            }
+
+            const currentSpeech = transcript.toLowerCase().trim();
+            logDiv.innerText = "Heard: " + currentSpeech;
+
+            if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
+                triggerMoveLeft();
+                recognition.stop();
+            } else if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
+                triggerMoveRight();
+                recognition.stop();
+            }
+        };
+
+        recognition.onend = () => {
+            if (shouldListen) {
+                try { recognition.start(); } catch(e) {}
+            }
+        };
+
+        document.getElementById('tap-overlay').addEventListener('click', (e) => {
+            shouldListen = true;
+            recognition.start();
+            resetIdleTimeout();
+            document.getElementById('tap-overlay').style.display = 'none';
+            e.stopPropagation();
         });
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false; 
-            recognition.interimResults = true;
-            recognition.lang = 'en-GB';
+    } else {
+        logDiv.innerText = "Error: API Unsupported";
+    }
+});
 
-            recognition.onstart = () => {
-                logDiv.innerText = "sup: say something...";
-            };
-
-            recognition.onerror = (event) => {
-                if (event.error !== 'no-speech') {
-                    logDiv.innerText = "skill issue: your mic is wack" + event.error;
-                }
-            };
-
-            recognition.onresult = (event) => {
-                let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    transcript += event.results[i].transcript;
-                }
-
-                const currentSpeech = transcript.toLowerCase().trim();
-                logDiv.innerText = "Heard: " + currentSpeech;
-
-                if (currentSpeech.includes('garden') || currentSpeech.includes('gard')) {
-                    triggerMoveLeft();
-                    recognition.stop();
-                } else if (currentSpeech.includes('door') || currentSpeech.includes('dor')) {
-                    triggerMoveRight();
-                    recognition.stop();
-                }
-            };
-
-            recognition.onend = () => {
-                if (shouldListen) {
-                    try { recognition.start(); } catch(e) {}
-                }
-            };
-
-            document.getElementById('tap-overlay').addEventListener('click', (e) => {
-                shouldListen = true;
-                recognition.start();
-                resetIdleTimeout();
-                document.getElementById('tap-overlay').style.display = 'none';
-                e.stopPropagation();
-            });
-
-        } else {
-            logDiv.innerText = "skill issue: your browser is wack";
-         }
-    });
 
     </script>
 </body>
